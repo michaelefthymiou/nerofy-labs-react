@@ -15,24 +15,36 @@ export default function Home() {
         <div className="hero-box-accent"></div>
 
         <svg className="hero-molecules" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMid slice">
-          <circle cx="80" cy="120" r="3.5" fill="rgba(106,180,204,0.3)"/>
-          <circle cx="200" cy="80" r="2.5" fill="rgba(255,255,255,0.2)"/>
-          <circle cx="340" cy="160" r="4.5" fill="rgba(106,180,204,0.25)"/>
-          <circle cx="440" cy="60" r="3" fill="rgba(255,255,255,0.18)"/>
-          <line x1="80" y1="120" x2="200" y2="80" stroke="rgba(255,255,255,0.12)" strokeWidth="1"/>
-          <line x1="200" y1="80" x2="340" y2="160" stroke="rgba(106,180,204,0.15)" strokeWidth="1"/>
-          <line x1="340" y1="160" x2="440" y2="60" stroke="rgba(255,255,255,0.1)" strokeWidth="1"/>
-          <circle cx="160" cy="300" r="3" fill="rgba(106,180,204,0.2)"/>
-          <circle cx="300" cy="260" r="4" fill="rgba(255,255,255,0.15)"/>
-          <circle cx="420" cy="320" r="2.5" fill="rgba(255,255,255,0.14)"/>
-          <line x1="160" y1="300" x2="300" y2="260" stroke="rgba(106,180,204,0.1)" strokeWidth="1"/>
-          <line x1="300" y1="260" x2="420" y2="320" stroke="rgba(255,255,255,0.09)" strokeWidth="1"/>
-          <circle cx="100" cy="480" r="3" fill="rgba(106,180,204,0.15)"/>
-          <circle cx="250" cy="440" r="2.5" fill="rgba(255,255,255,0.12)"/>
-          <circle cx="380" cy="500" r="4" fill="rgba(106,180,204,0.18)"/>
-          <line x1="100" y1="480" x2="250" y2="440" stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
-          <line x1="250" y1="440" x2="380" y2="500" stroke="rgba(106,180,204,0.08)" strokeWidth="1"/>
-        </svg>
+  {/* nodes */}
+  <circle cx="80" cy="120" r="10" fill="rgba(106,180,204,0.9)"/>
+  <circle cx="200" cy="80" r="8" fill="rgba(255,255,255,0.7)"/>
+  <circle cx="340" cy="160" r="12" fill="rgba(106,180,204,0.85)"/>
+  <circle cx="440" cy="60" r="9" fill="rgba(255,255,255,0.65)"/>
+  <circle cx="160" cy="300" r="10" fill="rgba(106,180,204,0.8)"/>
+  <circle cx="300" cy="260" r="13" fill="rgba(255,255,255,0.6)"/>
+  <circle cx="420" cy="320" r="8" fill="rgba(106,180,204,0.75)"/>
+  <circle cx="100" cy="480" r="11" fill="rgba(106,180,204,0.7)"/>
+  <circle cx="250" cy="440" r="8" fill="rgba(255,255,255,0.55)"/>
+  <circle cx="380" cy="500" r="12" fill="rgba(106,180,204,0.75)"/>
+  <circle cx="470" cy="200" r="7" fill="rgba(255,255,255,0.5)"/>
+  <circle cx="490" cy="400" r="9" fill="rgba(106,180,204,0.65)"/>
+  {/* glow rings behind nodes */}
+  <circle cx="80" cy="120" r="22" fill="rgba(106,180,204,0.15)"/>
+  <circle cx="340" cy="160" r="26" fill="rgba(106,180,204,0.12)"/>
+  <circle cx="300" cy="260" r="28" fill="rgba(255,255,255,0.08)"/>
+  <circle cx="100" cy="480" r="24" fill="rgba(106,180,204,0.1)"/>
+  <circle cx="380" cy="500" r="26" fill="rgba(106,180,204,0.1)"/>
+  {/* sticks */}
+  <line x1="80" y1="120" x2="200" y2="80" stroke="rgba(106,180,204,0.35)" strokeWidth="1.5"/>
+  <line x1="200" y1="80" x2="340" y2="160" stroke="rgba(106,180,204,0.35)" strokeWidth="1.5"/>
+  <line x1="340" y1="160" x2="440" y2="60" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
+  <line x1="160" y1="300" x2="300" y2="260" stroke="rgba(106,180,204,0.3)" strokeWidth="1.5"/>
+  <line x1="300" y1="260" x2="420" y2="320" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
+  <line x1="100" y1="480" x2="250" y2="440" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
+  <line x1="250" y1="440" x2="380" y2="500" stroke="rgba(106,180,204,0.3)" strokeWidth="1.5"/>
+  <line x1="420" y1="320" x2="470" y2="200" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/>
+  <line x1="440" y1="60" x2="490" y2="400" stroke="rgba(106,180,204,0.15)" strokeWidth="1.5"/>
+</svg>
 
         <div className="hero-content">
           <div className="hero-eyebrow">
