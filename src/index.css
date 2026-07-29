@@ -7,14 +7,37 @@
 }
 
 :root {
+  /* Dark surfaces — used by the hero and the water strip band */
   --black: #060608;
   --surface: #0e0e12;
   --surface2: #13131a;
   --border: #252530;
   --border2: #30303e;
+
+  /* Accents */
   --accent: #6ab4cc;
   --accent2: #3a8fa8;
-  --accent-bright: #8fd4ec;
+  --accent-bright: #8fd4ec; /* reads on dark only */
+  --accent-ink: #1f6d85;    /* same hue, darkened to read on light */
+
+  /* Light surfaces */
+  --page: #f7f8fa;
+  --page-alt: #eef0f4;
+  --card: #ffffff;
+  --line: rgba(13, 13, 18, 0.12);
+  --line-soft: rgba(13, 13, 18, 0.07);
+
+  /* Text on light backgrounds */
+  --ink: #0d0d12;
+  --ink-body: rgba(13, 13, 18, 0.72);
+  --ink-muted: rgba(13, 13, 18, 0.5);
+  --ink-faint: rgba(13, 13, 18, 0.34);
+
+  /* Text on dark backgrounds */
+  --on-dark: #eef0f6;
+  --on-dark-body: rgba(255, 255, 255, 0.66);
+  --on-dark-muted: rgba(255, 255, 255, 0.45);
+
   --white: #eef0f6;
   --silver: #f2f4f8;
   --silver2: #ffffff;
@@ -26,8 +49,8 @@ html {
 }
 
 body {
-  background: var(--black);
-  color: var(--white);
+  background: var(--page);
+  color: var(--ink-body);
   font-family: 'Barlow', sans-serif;
   font-weight: 300;
   overflow-x: hidden;

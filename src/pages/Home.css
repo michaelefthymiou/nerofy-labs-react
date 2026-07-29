@@ -976,3 +976,139 @@
   .products-grid { grid-template-columns: 1fr; }
   .water-stats { gap: 32px; justify-content: center; }
 }
+/* =========================================================
+   LIGHT THEME
+   The hero and the water strip stay dark; everything else
+   sits on the light page background. These rules come last
+   so they override the dark values declared above.
+   ========================================================= */
+
+/* --- Hero: needs its own dark background now that body is light --- */
+.hero {
+  background: var(--black);
+  color: var(--on-dark);
+}
+
+/* --- Products section --- */
+.section-eyebrow-line { background: var(--accent-ink); }
+.section-eyebrow span { color: var(--accent-ink); }
+.section-title { color: var(--ink); }
+.section-title em { color: var(--ink-muted); }
+
+.section-sub {
+  color: var(--ink-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.product-card {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  box-shadow: 0 1px 2px rgba(13, 13, 18, 0.04);
+}
+
+.product-card:hover {
+  background: var(--card);
+  box-shadow: 0 10px 34px rgba(13, 13, 18, 0.1);
+}
+
+/* --- Water strip: stays dark, so its body text goes light --- */
+.water-body {
+  color: var(--on-dark-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* --- Why section: the alternating tonal band --- */
+.why-section { background: var(--page-alt); }
+.why-bg-box { border-color: rgba(13, 13, 18, 0.06); }
+.why-bg-box2 { border-color: rgba(13, 13, 18, 0.05); }
+
+.orbit-ring-1 { border-color: rgba(13, 13, 18, 0.1); }
+.orbit-ring-3 { border-color: rgba(13, 13, 18, 0.14); }
+
+.orbit-dot-2 {
+  background: var(--ink);
+  box-shadow: 0 0 12px rgba(13, 13, 18, 0.35), 0 0 30px rgba(13, 13, 18, 0.16);
+}
+
+.orbit-center {
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 0 50px rgba(106, 180, 204, 0.18), 0 8px 30px rgba(13, 13, 18, 0.08);
+}
+
+.why-intro {
+  color: var(--ink-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.why-intro strong { color: var(--ink); }
+
+.why-point {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+}
+
+.why-point-title { color: var(--ink); }
+.why-point-desc { color: var(--ink-body); }
+
+/* --- Closing CTA --- */
+.cta-box-tl { border-color: rgba(13, 13, 18, 0.07); }
+.cta-box-br { border-color: rgba(13, 13, 18, 0.06); }
+.cta-eyebrow-line { background: var(--line); }
+.cta-eyebrow span { color: var(--ink-muted); }
+.cta-title { color: var(--ink); }
+.cta-title em { color: var(--ink-muted); }
+
+.cta-sub {
+  color: var(--ink-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.cta-email { color: var(--ink-muted); }
+.cta-email a {
+  color: var(--accent-ink);
+  border-bottom-color: rgba(31, 109, 133, 0.35);
+}
+.cta-email a:hover { border-bottom-color: var(--accent-ink); }
+
+/* --- Footer --- */
+.footer { border-top: 1px solid var(--line); }
+.footer-logo span { color: var(--ink-muted); }
+.footer-copy { color: var(--ink-faint); }
+
+/* --- Buttons -------------------------------------------------
+   .btn-primary appears both in the dark hero and on light
+   sections, so the default is now dark-on-light and the dark
+   blocks flip it back.
+   ------------------------------------------------------------ */
+.btn-primary {
+  background: var(--ink);
+  color: #fff;
+  border: 1.5px solid var(--ink);
+  box-shadow: none;
+}
+
+.btn-primary:hover { background: #24242e; }
+
+.hero .btn-primary,
+.water-strip .btn-primary {
+  background: #fff;
+  color: #000;
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 40px rgba(255, 255, 255, 0.15);
+}
+
+.hero .btn-primary:hover,
+.water-strip .btn-primary:hover { background: rgba(255, 255, 255, 0.9); }

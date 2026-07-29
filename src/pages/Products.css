@@ -508,3 +508,108 @@
 @media (max-width: 580px) {
   .product-images { min-height: 240px; }
 }
+/* =========================================================
+   LIGHT THEME
+   .page-header and .cta-strip stay dark (they mirror the
+   Home hero and water strip); the product blocks go light.
+   ========================================================= */
+
+/* --- Dark page header --- */
+.page-header {
+  background: var(--black);
+  color: var(--on-dark);
+}
+
+.page-header-sub {
+  color: var(--on-dark-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+/* --- Product blocks --- */
+.product-block {
+  background: var(--line-soft);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(13, 13, 18, 0.04);
+  margin-bottom: 28px;
+}
+
+.product-images { background: var(--page-alt); }
+.product-img-first { border-right: 1px solid var(--line-soft); }
+
+.product-img-wrap img {
+  background: var(--page-alt);
+  filter: none;
+}
+
+.product-img-wrap:hover img { filter: none; }
+
+.img-label {
+  color: var(--ink-muted);
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.product-img-num {
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+}
+
+.product-info { background: var(--card); }
+.product-info::before { background: none; }
+.product-info-corner { border-color: var(--line); }
+.product-info-corner-bl { border-color: var(--line-soft); }
+
+.product-num-label { color: var(--ink-faint); }
+.product-name { color: var(--ink); }
+.product-divider { background: var(--accent-ink); }
+
+.product-desc-text {
+  color: var(--ink-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.spec-pill {
+  border: 1px solid var(--line);
+  color: var(--ink-muted);
+  background: rgba(13, 13, 18, 0.03);
+}
+
+.spec-pill-accent {
+  border-color: rgba(31, 109, 133, 0.35);
+  color: var(--accent-ink);
+  background: rgba(31, 109, 133, 0.05);
+}
+
+.product-cta {
+  background: var(--ink);
+  color: #fff;
+  border: 1.5px solid var(--ink);
+}
+
+.product-cta:hover {
+  background: #24242e;
+  color: #fff;
+  border-color: #24242e;
+}
+
+/* --- CTA strip stays dark --- */
+.cta-strip-sub { color: var(--on-dark-muted); }
+
+.cta-strip .btn-primary {
+  background: #fff;
+  color: #000;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+
+.cta-strip .btn-primary:hover { background: rgba(255, 255, 255, 0.9); }
+
+/* --- Footer --- */
+.footer { border-top: 1px solid var(--line); }
+.footer-logo span { color: var(--ink-muted); }
+.footer-copy { color: var(--ink-faint); }

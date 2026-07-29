@@ -322,3 +322,55 @@
 @media (max-width: 580px) {
   .form-row { grid-template-columns: 1fr; }
 }
+/* =========================================================
+   LIGHT THEME
+   .page-header stays dark; the contact cards were already
+   light, so this mostly fixes borders, the footer and the
+   native select dropdown.
+   ========================================================= */
+
+.page-header {
+  background: var(--black);
+  color: var(--on-dark);
+}
+
+.page-header-sub {
+  color: var(--on-dark-body);
+  background: none;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.contact-info,
+.contact-form-wrap {
+  background: var(--card);
+  border: 1px solid var(--line-soft);
+  box-shadow: 0 1px 2px rgba(13, 13, 18, 0.04);
+}
+
+.contact-form-corner { border-color: var(--line); }
+
+.form-input { background: var(--card); }
+
+.form-select option {
+  background: #fff;
+  color: var(--ink);
+}
+
+.form-submit {
+  background: var(--ink);
+  color: #fff;
+  border: 1.5px solid var(--ink);
+  box-shadow: none;
+}
+
+.form-submit:hover {
+  background: #24242e;
+  color: #fff;
+}
+
+/* --- Footer --- */
+.footer { border-top: 1px solid var(--line); }
+.footer-logo span { color: var(--ink-muted); }
+.footer-copy { color: var(--ink-faint); }
