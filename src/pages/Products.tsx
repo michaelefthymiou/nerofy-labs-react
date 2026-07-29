@@ -1,37 +1,22 @@
-import './Products.css'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
-
-const products = [
-  {
-    num: '01',
-    category: 'Tap Filtration',
-    name: 'Countertop\nFaucet Filter',
-    desc: 'Ultrafiltration countertop faucet filter with an eco-friendly ceramic 0.5-micron filtration cartridge. Attaches directly to your existing tap with no plumbing required — delivering clean, filtered drinking water on demand.',
-    specs: ['0.5 Micron Ceramic', 'Ultrafiltration', 'Countertop', 'Eco-Friendly Cartridge', 'No Plumbing Needed'],
-    images: ['/tap1.png', '/tap2.png'],
-    labels: ['Front View', 'Detail'],
-  },
-  {
-    num: '02',
-    category: 'Shower Filtration',
-    name: '15-Stage\nShower Filter',
-    desc: 'A 15-stage shower head filter that combines antibacterial balls, calcium sulfite balls and KDF media to soften your water, reduce chlorine and heavy metals, and noticeably improve skin moisture and hair health from the very first use.',
-    specs: ['15-Stage Filtration', 'KDF Media', 'Antibacterial Balls', 'Calcium Sulfite', 'Softens Water', 'Reduces Hair Loss', 'Reduces Acne'],
-    images: ['/shower.png', '/shower2.png'],
-    labels: ['Full Unit', 'Detail'],
-  },
-  {
-    num: '03',
-    category: 'Reverse Osmosis',
-    name: '5-Stage Undersink\nRO System',
-    desc: 'A 5-stage undersink reverse osmosis and ultrafiltration water purification system. The PP + UDF + CTO + UF + T33 filter cartridge sequence removes sediment, chlorine, dissolved solids, bacteria and improves taste — delivering up to 99% contaminant-free water direct from your kitchen tap.',
-    specs: ['5-Stage RO + UF', 'PP Sediment', 'UDF Carbon', 'CTO Block', 'Ultrafiltration', 'T33 Post Carbon', '99% Removal'],
-    images: ['/ro1.png', '/ro2.png'],
-    labels: ['Full System', 'Detail'],
-  },
-]
+import { products } from '../data/products'
+import { useCart, formatRand } from '../store/cart'
+import './Products.css'
 
 export default function Products() {
+  const addItem = useCart((s) => s.addItem)
+  const [justAdded, setJustAdded] = useState<string | null>(null)
+
+  function handleAdd(id: string, name: string, price: number, image: string) {
+    addItem({ id, name, price, image })
+    setJustAdded(id)
+    window.setTimeout(
+      () => setJustAdded((current) => (current === id ? null : current)),
+      1800,
+    )
+  }
+
   return (
     <>
       <div className="page-header">
@@ -79,9 +64,31 @@ export default function Products() {
                   <span className={`spec-pill ${i === 0 ? 'spec-pill-accent' : ''}`} key={i}>{spec}</span>
                 ))}
               </div>
-              <Link to="/contact" className="product-cta">
-                Enquire Now <span className="product-cta-arrow">↗</span>
-              </Link>
+              {product.price === null ? (
+                <Link to="/contact" className="product-cta">
+                  Enquire Now <span className="product-cta-arrow">↗</span>
+                </Link>
+              ) : (
+                <div className="product-buy">
+                  <span className="product-price">
+                    {formatRand(product.price)}
+                  </span>
+                  <button
+                    type="button"
+                    className="product-cta"
+                    onClick={() =>
+                      handleAdd(
+                        product.id,
+                        product.shortName,
+                        product.price as number,
+                        product.images[0],
+                      )
+                    }
+                  >
+                    {justAdded === product.id ? 'Added ✓' : 'Add to Cart'}
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         ))}

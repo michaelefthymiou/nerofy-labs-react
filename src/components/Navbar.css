@@ -89,6 +89,43 @@
   gap: 18px;
 }
 
+.nav-cart {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: rgba(0, 0, 0, 0.62);
+  transition: color 0.3s;
+}
+
+.nav-cart:hover {
+  color: #000;
+}
+
+.nav-cart svg {
+  width: 25px;
+  height: 25px;
+}
+
+.nav-cart-badge {
+  position: absolute;
+  top: 3px;
+  right: 1px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--accent-ink);
+  color: #fff;
+  font-family: 'Barlow', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
 .nav-burger {
   display: none;
   flex-direction: column;

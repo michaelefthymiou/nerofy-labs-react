@@ -613,3 +613,25 @@
 .footer { border-top: 1px solid var(--line); }
 .footer-logo span { color: var(--ink-muted); }
 .footer-copy { color: var(--ink-faint); }
+
+/* ---------- price + add to cart ---------- */
+
+.product-buy {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex-wrap: wrap;
+}
+
+.product-price {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 30px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--ink);
+}
+
+button.product-cta {
+  font-family: 'Barlow', sans-serif;
+  cursor: pointer;
+}

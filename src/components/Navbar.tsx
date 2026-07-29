@@ -1,18 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useCart, countItems } from '../store/cart'
 import './Navbar.css'
 
-/* Links shown inside the mobile drawer, in order.
-   The cart link gets added here in step 4. */
+/* Links shown inside the mobile drawer, in order. */
 const MOBILE_LINKS = [
   { to: '/products', label: 'Products' },
   { to: '/products', label: 'Shop' },
   { to: '/#why', label: 'About' },
+  { to: '/cart', label: 'Cart' },
 ]
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false)
   const location = useLocation()
+  const cartCount = useCart((s) => countItems(s.items))
 
   // Close the drawer whenever the route changes
   useEffect(() => {
@@ -52,7 +54,30 @@ export default function Navbar() {
         </div>
 
         <div className="nav-actions">
-          {/* Cart button slots in here in step 4 */}
+          <Link
+            to="/cart"
+            className="nav-cart"
+            aria-label={
+              cartCount === 1 ? 'Cart, 1 item' : `Cart, ${cartCount} items`
+            }
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path
+                d="M4 5h2l2.2 9.5a1.5 1.5 0 0 0 1.46 1.15h7.3a1.5 1.5 0 0 0 1.46-1.13L20 8H7"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <circle cx="10" cy="19" r="1.4" fill="currentColor" />
+              <circle cx="17.5" cy="19" r="1.4" fill="currentColor" />
+            </svg>
+            {cartCount > 0 && (
+              <span className="nav-cart-badge">{cartCount}</span>
+            )}
+          </Link>
+
           <button
             type="button"
             className={`nav-burger${menuOpen ? ' is-open' : ''}`}

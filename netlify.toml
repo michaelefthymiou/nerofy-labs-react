@@ -1,0 +1,12 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+# Single-page app: every non-file route must serve index.html so that
+# /products, /cart and /checkout/success work on refresh and direct links.
+# Functions are matched before this rule, so /.netlify/functions/* is safe.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
