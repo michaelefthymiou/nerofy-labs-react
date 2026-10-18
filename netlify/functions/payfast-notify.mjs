@@ -1,100 +1,74 @@
-import crypto from 'node:crypto'
+import { payfastConfig, signPairs } from '../lib/payfast.mjs'
+import { postToSheet } from '../lib/store.mjs'
 
 /* ===================================================================
-   PayFast ITN (Instant Transaction Notification) receiver.
-
-   PayFast POSTs here server-to-server after a payment. This endpoint
-   must return 200 quickly or PayFast will retry.
-
-   It performs the two checks PayFast requires before you may treat a
-   payment as real:
-     1. Recompute the signature over the posted fields.
-     2. Post the data back to PayFast, which replies VALID or INVALID.
-
-   Right now a verified payment is only logged — you can read it in
-   Netlify → Functions → payfast-notify. Wire up an order email or a
-   database here when you're ready.
+   PayFast ITN: PayFast calls this server-to-server after payment.
+   1. Check the signature.  2. Ask PayFast to confirm it.
+   3. On COMPLETE: log the order in the Google Sheet, take it off
+      stock, and email you + the customer (done by the Apps Script).
+   Always answer 200, otherwise PayFast keeps retrying.
    =================================================================== */
 
-const VALIDATE_URL = {
-  sandbox: 'https://sandbox.payfast.co.za/eng/query/validate',
-  live: 'https://www.payfast.co.za/eng/query/validate',
-}
-
-function phpUrlencode(value) {
-  return encodeURIComponent(String(value))
-    .replace(/%20/g, '+')
-    .replace(
-      /[!'()*~]/g,
-      (c) => '%' + c.charCodeAt(0).toString(16).toUpperCase(),
-    )
-}
-
-/* For ITN the signature covers the posted fields in the order received,
-   excluding the signature field itself. */
-function itnSignature(pairs, passphrase) {
-  const parts = pairs
-    .filter(([key]) => key !== 'signature')
-    .map(([key, value]) => `${key}=${phpUrlencode(String(value).trim())}`)
-  if (passphrase) parts.push(`passphrase=${phpUrlencode(passphrase.trim())}`)
-  return crypto.createHash('md5').update(parts.join('&')).digest('hex')
-}
-
 export default async (req) => {
-  /* Always 200 — PayFast retries on anything else, and a retry storm
-     is worse than a dropped notification we can find in the logs. */
   const ok = () => new Response('', { status: 200 })
-
   if (req.method !== 'POST') return ok()
 
   try {
     const raw = await req.text()
-    const params = new URLSearchParams(raw)
-    const pairs = [...params.entries()]
+    const pairs = [...new URLSearchParams(raw).entries()]
     const data = Object.fromEntries(pairs)
+    const cfg = payfastConfig()
 
-    const isLive = (process.env.PAYFAST_MODE || 'sandbox').toLowerCase() === 'live'
-    const passphrase = process.env.PAYFAST_PASSPHRASE || ''
-
-    /* Check 1 — signature */
-    const expected = itnSignature(pairs, passphrase)
-    if (expected !== data.signature) {
-      console.warn('[payfast-notify] REJECTED: signature mismatch', {
-        reference: data.m_payment_id,
-      })
+    if (signPairs(pairs, cfg.passphrase) !== data.signature) {
+      console.warn('[payfast-notify] REJECTED signature mismatch', data.m_payment_id)
       return ok()
     }
 
-    /* Check 2 — ask PayFast to confirm it sent this */
-    const verify = await fetch(VALIDATE_URL[isLive ? 'live' : 'sandbox'], {
+    const verify = await fetch(cfg.urls.validate, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: raw,
+      signal: AbortSignal.timeout(8000),
     })
     const verdict = (await verify.text()).trim()
     if (!verdict.startsWith('VALID')) {
-      console.warn('[payfast-notify] REJECTED: PayFast returned', verdict, {
-        reference: data.m_payment_id,
-      })
+      console.warn('[payfast-notify] REJECTED by PayFast:', verdict, data.m_payment_id)
       return ok()
     }
 
-    if (data.payment_status === 'COMPLETE') {
-      console.log('[payfast-notify] PAID', {
-        reference: data.m_payment_id,
-        payfastId: data.pf_payment_id,
-        amount: data.amount_gross,
-        name: `${data.name_first ?? ''} ${data.name_last ?? ''}`.trim(),
-        email: data.email_address,
-        delivery: data.custom_str1,
-        address: data.custom_str2,
-        items: data.custom_str3,
-      })
-    } else {
-      console.log('[payfast-notify] status', data.payment_status, {
-        reference: data.m_payment_id,
-      })
+    if (data.payment_status !== 'COMPLETE') {
+      console.log('[payfast-notify] status', data.payment_status, data.m_payment_id)
+      return ok()
     }
+
+    const items = String(data.custom_str3 || '')
+      .split('|')
+      .map((s) => s.split(':'))
+      .filter(([id, q]) => id && q)
+      .map(([id, q]) => ({ id, qty: Number(q) }))
+
+    const order = {
+      type: 'order',
+      sandbox: !cfg.isLive,
+      reference: data.m_payment_id,
+      payfastId: data.pf_payment_id,
+      status: data.payment_status,
+      name: `${data.name_first ?? ''} ${data.name_last ?? ''}`.trim(),
+      email: data.email_address,
+      phone: data.custom_str5 || '',
+      delivery: data.custom_str1,
+      deliveryFee: Number(data.custom_int1 || 0),
+      address: data.custom_str2,
+      itemsText: data.custom_str4,
+      items,
+      amount: Number(data.amount_gross),
+      fee: Number(data.amount_fee || 0),
+      net: Number(data.amount_net || 0),
+    }
+
+    console.log('[payfast-notify] PAID', order)
+    const result = await postToSheet(order)
+    if (!result.ok) console.error('[payfast-notify] ORDER NOT LOGGED, handle manually', result, order)
   } catch (err) {
     console.error('[payfast-notify] error', err)
   }

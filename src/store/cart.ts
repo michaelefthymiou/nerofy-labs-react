@@ -3,40 +3,26 @@ import { persist } from 'zustand/middleware'
 
 export type ShippingMethod = 'locker' | 'door'
 
-/* ------------------------------------------------------------------
-   Delivery pricing.
-   Based on PUDO (The Courier Guy) rates for a small sub-5kg parcel.
-   PUDO adjusts these periodically — check the PUDO app against your
-   actual box size and edit the two numbers below when they change.
-   ------------------------------------------------------------------ */
-export const SHIPPING_OPTIONS: Record<
-  ShippingMethod,
-  { label: string; blurb: string; price: number }
-> = {
+/* Delivery prices. Keep in sync with SHIPPING in netlify/lib/store.mjs */
+export const SHIPPING_OPTIONS: Record<ShippingMethod, { label: string; blurb: string; price: number }> = {
   locker: {
     label: 'PUDO locker collection',
-    blurb: 'Collect from your nearest PUDO locker, 1–3 business days',
+    blurb: 'Collect from a PUDO locker near you. 2 to 4 working days.',
     price: 60,
   },
   door: {
     label: 'Door delivery',
-    blurb: 'Delivered to your address, 1–3 business days',
+    blurb: 'Delivered to your home or office. 2 to 4 working days.',
     price: 99,
   },
 }
 
-export type CartItem = {
-  id: string
-  name: string
-  price: number
-  image: string
-  qty: number
-}
+export type CartItem = { id: string; name: string; price: number; image: string; qty: number }
 
 type CartState = {
   items: CartItem[]
   shipping: ShippingMethod
-  addItem: (item: Omit<CartItem, 'qty'>) => void
+  addItem: (item: Omit<CartItem, 'qty'>, qty?: number) => void
   removeItem: (id: string) => void
   setQty: (id: string, qty: number) => void
   setShipping: (method: ShippingMethod) => void
@@ -48,51 +34,38 @@ export const useCart = create<CartState>()(
     (set) => ({
       items: [],
       shipping: 'locker',
-
-      addItem: (item) =>
-        set((state) => {
-          const existing = state.items.find((i) => i.id === item.id)
+      addItem: (item, qty = 1) =>
+        set((s) => {
+          const existing = s.items.find((i) => i.id === item.id)
           if (existing) {
             return {
-              items: state.items.map((i) =>
-                i.id === item.id ? { ...i, qty: i.qty + 1 } : i,
+              items: s.items.map((i) =>
+                i.id === item.id ? { ...i, qty: Math.min(i.qty + qty, 20) } : i,
               ),
             }
           }
-          return { items: [...state.items, { ...item, qty: 1 }] }
+          return { items: [...s.items, { ...item, qty: Math.min(qty, 20) }] }
         }),
-
-      removeItem: (id) =>
-        set((state) => ({ items: state.items.filter((i) => i.id !== id) })),
-
+      removeItem: (id) => set((s) => ({ items: s.items.filter((i) => i.id !== id) })),
       setQty: (id, qty) =>
-        set((state) => ({
+        set((s) => ({
           items:
             qty <= 0
-              ? state.items.filter((i) => i.id !== id)
-              : state.items.map((i) => (i.id === id ? { ...i, qty } : i)),
+              ? s.items.filter((i) => i.id !== id)
+              : s.items.map((i) => (i.id === id ? { ...i, qty: Math.min(qty, 20) } : i)),
         })),
-
       setShipping: (method) => set({ shipping: method }),
-
       clear: () => set({ items: [], shipping: 'locker' }),
     }),
-    { name: 'nerofy-cart' },
+    /* skipHydration keeps the prerendered HTML and the first client render identical.
+       App calls useCart.persist.rehydrate() after mount. */
+    { name: 'nerofy-cart', skipHydration: true },
   ),
 )
 
-/* Derived helpers — kept outside the store so they don't trigger renders. */
-export const countItems = (items: CartItem[]) =>
-  items.reduce((sum, i) => sum + i.qty, 0)
-
-export const subtotal = (items: CartItem[]) =>
-  items.reduce((sum, i) => sum + i.price * i.qty, 0)
-
+export const countItems = (items: CartItem[]) => items.reduce((n, i) => n + i.qty, 0)
+export const subtotal = (items: CartItem[]) => items.reduce((n, i) => n + i.price * i.qty, 0)
 export const orderTotal = (items: CartItem[], shipping: ShippingMethod) =>
   subtotal(items) + (items.length ? SHIPPING_OPTIONS[shipping].price : 0)
-
 export const formatRand = (amount: number) =>
-  `R${amount.toLocaleString('en-ZA', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  })}`
+  'R' + Math.round(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ')

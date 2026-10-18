@@ -1,222 +1,370 @@
- import './Home.css'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link } from 'react-router-dom'
+import Molecule from '../components/Molecule'
+import { Words, Eyebrow, delay } from '../components/motion'
+import { BuyButton, Price, StockPill } from '../components/Stock'
+import { useScrollProgress } from '../hooks/useMotion'
+import { products } from '../data/products'
+import { faqs } from '../data/faqs'
+import './Home.css'
+
+const CONTAMINANTS = [
+  {
+    name: 'Chlorine',
+    formula: 'Cl₂',
+    text: 'Added at the treatment works to disinfect the water. Safe, but it is what you taste and smell, and it dries out skin and hair in the shower.',
+  },
+  {
+    name: 'Sediment and rust',
+    formula: 'Fe₂O₃',
+    text: 'Picked up from old municipal pipes and burst main repairs. It is why your water sometimes runs brown after an outage.',
+  },
+  {
+    name: 'Trace metals',
+    formula: 'Pb',
+    text: 'Lead, copper and other metals can leach from ageing plumbing between the reservoir and your tap.',
+  },
+  {
+    name: 'Dissolved solids',
+    formula: 'TDS',
+    text: 'Salts, nitrates and minerals dissolved in the water. Only reverse osmosis reliably takes these out.',
+  },
+]
+
+const STAGES = [
+  { n: '01', name: 'Sediment', size: '5 micron', text: 'A spun polypropylene layer catches sand, rust and grit.' },
+  { n: '02', name: 'Activated carbon', size: 'Adsorption', text: 'Carbon grabs chlorine and organic compounds, fixing taste and smell.' },
+  { n: '03', name: 'Ultrafiltration', size: '0.01 to 0.5 micron', text: 'Fine ceramic or hollow fibre traps bacteria and microscopic particles.' },
+  { n: '04', name: 'Reverse osmosis', size: '0.0001 micron', text: 'A membrane lets water molecules through and rejects up to 99% of dissolved solids.' },
+]
+
+const STATS = [
+  { value: 0.5, decimals: 1, unit: 'micron', label: 'Ceramic faucet filtration' },
+  { value: 15, decimals: 0, unit: 'stages', label: 'In our shower filter' },
+  { value: 99, decimals: 0, unit: '%', label: 'Dissolved solids removed by RO' },
+  { value: 60, decimals: 0, unit: 'R', label: 'PUDO locker delivery', prefix: true },
+]
+
+function Counter({ value, decimals, unit, prefix }: { value: number; decimals: number; unit: string; prefix?: boolean }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const [shown, setShown] = useState(value)
+  useEffect(() => {
+    const el = ref.current
+    if (!el || !('IntersectionObserver' in window)) return
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    setShown(0)
+    const io = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return
+      io.disconnect()
+      const start = performance.now()
+      const tick = (t: number) => {
+        const k = Math.min(1, (t - start) / 1400)
+        setShown(value * (1 - Math.pow(1 - k, 3)))
+        if (k < 1) requestAnimationFrame(tick)
+      }
+      requestAnimationFrame(tick)
+    })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [value])
+  const num = shown.toFixed(decimals)
+  return (
+    <span ref={ref} className="stat-value">
+      {prefix ? unit : ''}
+      {num}
+      {!prefix && <small>{unit === '%' ? '%' : ` ${unit}`}</small>}
+    </span>
+  )
+}
 
 export default function Home() {
+  const heroRef = useRef<HTMLElement>(null)
+  const stagesRef = useRef<HTMLElement>(null)
+  const [stage, setStage] = useState(0)
+  const onStep = useCallback((s: number) => setStage(s), [])
+  useScrollProgress(stagesRef, { steps: STAGES.length, onStep })
+
+  /* Hero: scroll parallax and pointer tilt for the molecule */
+  useEffect(() => {
+    const hero = heroRef.current
+    if (!hero) return
+    let frame = 0
+    const onScroll = () => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        const p = Math.min(1, window.scrollY / Math.max(hero.offsetHeight, 1))
+        hero.style.setProperty('--hp', p.toFixed(4))
+      })
+    }
+    const onMove = (e: PointerEvent) => {
+      const r = hero.getBoundingClientRect()
+      hero.style.setProperty('--mx', (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3))
+      hero.style.setProperty('--my', (((e.clientY - r.top) / r.height) * 2 - 1).toFixed(3))
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    hero.addEventListener('pointermove', onMove)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      hero.removeEventListener('pointermove', onMove)
+      if (frame) cancelAnimationFrame(frame)
+    }
+  }, [])
+
   return (
-    <>
-      {/* HERO */}
-      <section className="hero">
-        <div className="hero-grid"></div>
-        <div className="hero-beam"></div>
-        <div className="hero-beam-2"></div>
-        <div className="hero-beam-3"></div>
-        <div className="hero-hline"></div>
-        <div className="hero-corner"></div>
-        <div className="hero-corner-br"></div>
-        <div className="hero-box-accent"></div>
+    <main>
+      {/* ================= HERO ================= */}
+      <section className="hero dark" ref={heroRef}>
+        <div className="hero-bg" aria-hidden="true">
+          <div className="hero-caustics" />
+          {Array.from({ length: 14 }).map((_, i) => (
+            <span key={i} className="bubble" style={{ ['--b' as string]: i }} />
+          ))}
+        </div>
 
-        <svg className="hero-molecules" viewBox="0 0 500 700" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMid slice">
-  {/* nodes */}
-  <circle cx="80" cy="120" r="10" fill="rgba(106,180,204,0.9)"/>
-  <circle cx="200" cy="80" r="8" fill="rgba(255,255,255,0.7)"/>
-  <circle cx="340" cy="160" r="12" fill="rgba(106,180,204,0.85)"/>
-  <circle cx="440" cy="60" r="9" fill="rgba(255,255,255,0.65)"/>
-  <circle cx="160" cy="300" r="10" fill="rgba(106,180,204,0.8)"/>
-  <circle cx="300" cy="260" r="13" fill="rgba(255,255,255,0.6)"/>
-  <circle cx="420" cy="320" r="8" fill="rgba(106,180,204,0.75)"/>
-  <circle cx="100" cy="480" r="11" fill="rgba(106,180,204,0.7)"/>
-  <circle cx="250" cy="440" r="8" fill="rgba(255,255,255,0.55)"/>
-  <circle cx="380" cy="500" r="12" fill="rgba(106,180,204,0.75)"/>
-  <circle cx="470" cy="200" r="7" fill="rgba(255,255,255,0.5)"/>
-  <circle cx="490" cy="400" r="9" fill="rgba(106,180,204,0.65)"/>
-  {/* glow rings behind nodes */}
-  <circle cx="80" cy="120" r="22" fill="rgba(106,180,204,0.15)"/>
-  <circle cx="340" cy="160" r="26" fill="rgba(106,180,204,0.12)"/>
-  <circle cx="300" cy="260" r="28" fill="rgba(255,255,255,0.08)"/>
-  <circle cx="100" cy="480" r="24" fill="rgba(106,180,204,0.1)"/>
-  <circle cx="380" cy="500" r="26" fill="rgba(106,180,204,0.1)"/>
-  {/* sticks */}
-  <line x1="80" y1="120" x2="200" y2="80" stroke="rgba(106,180,204,0.35)" strokeWidth="1.5"/>
-  <line x1="200" y1="80" x2="340" y2="160" stroke="rgba(106,180,204,0.35)" strokeWidth="1.5"/>
-  <line x1="340" y1="160" x2="440" y2="60" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
-  <line x1="160" y1="300" x2="300" y2="260" stroke="rgba(106,180,204,0.3)" strokeWidth="1.5"/>
-  <line x1="300" y1="260" x2="420" y2="320" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
-  <line x1="100" y1="480" x2="250" y2="440" stroke="rgba(255,255,255,0.2)" strokeWidth="1.5"/>
-  <line x1="250" y1="440" x2="380" y2="500" stroke="rgba(106,180,204,0.3)" strokeWidth="1.5"/>
-  <line x1="420" y1="320" x2="470" y2="200" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5"/>
-  <line x1="440" y1="60" x2="490" y2="400" stroke="rgba(106,180,204,0.15)" strokeWidth="1.5"/>
-</svg>
-
-        <div className="hero-content">
-          <div className="hero-eyebrow">
-            <div className="hero-eyebrow-line"></div>
-            <span>Engineered Water Purification — Made Simple</span>
+        <div className="container hero-grid">
+          <div className="hero-copy">
+            <h1>
+              <span className="hero-kicker reveal">Water filters and purification systems · South Africa</span>
+              <span className="hero-title">
+                <Words text="Pure water," className="hero-line" />
+                <Words text="engineered." className="hero-line hero-line-em" start={0.18} />
+              </span>
+            </h1>
+            <p className="hero-lead reveal" style={delay(0.35)}>
+              Faucet filters, shower filters and reverse osmosis systems for South African homes. Selected by a chemical
+              engineer who designs water and process plants for a living, and delivered to your door.
+            </p>
+            <div className="hero-actions reveal" style={delay(0.5)}>
+              <Link to="/products" className="btn btn-primary btn-lg">
+                Shop water filters
+              </Link>
+              <Link to="/contact" className="btn btn-ghost btn-lg">
+                Free advice
+              </Link>
+            </div>
+            <ul className="hero-trust reveal" style={delay(0.65)}>
+              <li>Secure PayFast checkout</li>
+              <li>Nationwide PUDO delivery</li>
+              <li>Fits in minutes, no plumber</li>
+            </ul>
           </div>
-          <h1 className="hero-title">Water,<br /><em>Perfected.</em></h1>
-          <p className="hero-subtitle">At the Source.</p>
-          <p className="hero-desc">
-            From your tap to your shower to your entire home — <strong>Nerofy Labs designs, supplies and installs</strong> precision water filtration systems that remove contaminants, protect your skin and hair, and deliver clean, pure water where it matters.
-          </p>
-          <div className="hero-actions">
-            <a href="/products" className="btn-primary">Explore Systems</a>
-            <a href="/contact" className="btn-secondary">Book a Consultation</a>
+          <div className="hero-visual reveal" style={delay(0.2)}>
+            <Molecule />
           </div>
         </div>
 
-        <div className="hero-stats">
-          <div className="hero-stat">
-            <span className="hero-stat-num">4</span>
-            <span className="hero-stat-label">System Types</span>
+        <a href="#water" className="hero-scroll" aria-label="Scroll down">
+          <span />
+        </a>
+      </section>
+
+      {/* ================= MARQUEE ================= */}
+      <div className="marquee" aria-hidden="true">
+        <div className="marquee-track">
+          {Array.from({ length: 2 }).map((_, k) => (
+            <span key={k}>
+              Faucet water filters <i>✦</i> Shower filters <i>✦</i> Reverse osmosis <i>✦</i> Water purification <i>✦</i>{' '}
+              Johannesburg <i>✦</i> Delivered across South Africa <i>✦</i>{' '}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* ================= WHAT'S IN YOUR WATER ================= */}
+      <section className="section" id="water">
+        <div className="container">
+          <div className="section-head">
+            <Eyebrow>What is in your tap water</Eyebrow>
+            <Words as="h2" text="Treated at the plant. Not at your tap." className="section-title" />
+            <p className="section-intro reveal" style={delay(0.2)}>
+              South African municipal water leaves the treatment works meeting the SANS 241 drinking water standard. Then it
+              travels kilometres of pipe to reach you. Here is what a filter deals with.
+            </p>
           </div>
-          <div className="hero-stat">
-            <span className="hero-stat-num">100%</span>
-            <span className="hero-stat-label">Professionally Installed</span>
-          </div>
-          <div className="hero-stat">
-            <span className="hero-stat-num">RO</span>
-            <span className="hero-stat-label">Reverse Osmosis Grade</span>
+          <div className="contaminants">
+            {CONTAMINANTS.map((c, i) => (
+              <article className="contaminant reveal" style={delay(i * 0.1)} key={c.name}>
+                <span className="contaminant-formula">{c.formula}</span>
+                <h3>{c.name}</h3>
+                <p>{c.text}</p>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      <div className="light-divider"></div>
-
-      {/* PRODUCTS STRIP */}
-      <section className="section" id="products">
-        <div className="section-header">
-          <div className="section-eyebrow">
-            <div className="section-eyebrow-line"></div>
-            <span>Our Systems</span>
+      {/* ================= PRODUCTS ================= */}
+      <section className="section section-alt" id="shop">
+        <div className="container">
+          <div className="section-head section-head-split">
+            <div>
+              <Eyebrow>The range</Eyebrow>
+              <Words as="h2" text="Filtration for every tap in your home." className="section-title" />
+            </div>
+            <Link to="/products" className="link-arrow reveal">
+              See all details
+            </Link>
           </div>
-          <h2 className="section-title">Filtration for <em>every need</em></h2>
-          <p className="section-sub">Each system is specified, supplied and installed to suit your home — no guesswork, no DIY.</p>
+          <div className="product-grid">
+            {products.map((p, i) => (
+              <article className="product-card reveal" style={delay(i * 0.12)} key={p.id}>
+                <Link to={`/products#${p.slug}`} className="product-card-media">
+                  <img src={p.images[0].src} alt={p.images[0].alt} width="600" height="600" loading="lazy" decoding="async" />
+                  <StockPill id={p.id} />
+                </Link>
+                <div className="product-card-body">
+                  <p className="product-card-cat">{p.category}</p>
+                  <h3>
+                    <Link to={`/products#${p.slug}`}>{p.name}</Link>
+                  </h3>
+                  <p className="product-card-tag">{p.tagline}</p>
+                  <div className="product-card-foot">
+                    <Price id={p.id} />
+                    <BuyButton product={p} full />
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
         </div>
-        <div className="products-grid">
-          {[
-            { num: '01', name: 'Tap Filters', desc: 'Activated carbon attachment for your kitchen tap. Removes chlorine, sediment and organic compounds — clean drinking water, instantly.' },
-            { num: '02', name: 'Shower Filters', desc: 'Inline shower filter reducing chlorine and heavy metals. Visibly softer water — healthier skin and less hair dryness from day one.' },
-            { num: '03', name: 'Undersink RO', desc: 'Multi-stage reverse osmosis installed under your kitchen sink. Removes up to 99% of dissolved solids, fluoride and nitrates.' },
-            { num: '04', name: 'Whole-Home RO', desc: 'Point-of-entry system connected to your main water line. Every tap, shower and appliance in your home runs on purified water.' },
-          ].map((product) => (
-            <div className="product-card" key={product.num}>
-              <div className="product-card-corner"></div>
-              <p className="product-num">{product.num}</p>
-              <p className="product-name">{product.name}</p>
-              <p className="product-desc">{product.desc}</p>
-              <span className="product-arrow">↗</span>
+      </section>
+
+      {/* ================= HOW IT WORKS (scroll driven) ================= */}
+      <section className="stages dark" id="how-it-works" ref={stagesRef} data-stage={stage}>
+        <div className="container stages-grid">
+          <div className="stages-sticky">
+            <div className="cartridge" aria-hidden="true">
+              <div className="cartridge-shell">
+                {STAGES.map((s, i) => (
+                  <div key={s.n} className={`cartridge-layer layer-${i}${stage >= i ? ' is-on' : ''}`} />
+                ))}
+                <div className="cartridge-water" />
+                {Array.from({ length: 22 }).map((_, i) => (
+                  <span key={i} className="particle" style={{ ['--k' as string]: i }} />
+                ))}
+              </div>
+              <div className="cartridge-drop" />
+            </div>
+          </div>
+          <div className="stages-copy">
+            <Eyebrow light>How filtration works</Eyebrow>
+            <Words as="h2" text="Four barriers between you and your pipes." className="section-title" />
+            <p className="section-intro reveal">
+              Every system we sell is built from these stages. Scroll to send the water through.
+            </p>
+            <ol className="stage-list">
+              {STAGES.map((s, i) => (
+                <li key={s.n} className={`stage${stage === i ? ' is-active' : ''}${stage > i ? ' is-done' : ''}`}>
+                  <span className="stage-n">{s.n}</span>
+                  <div>
+                    <h3>
+                      {s.name} <small>{s.size}</small>
+                    </h3>
+                    <p>{s.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      {/* ================= STATS ================= */}
+      <section className="stats">
+        <div className="container stats-grid">
+          {STATS.map((s, i) => (
+            <div className="stat reveal" style={delay(i * 0.1)} key={s.label}>
+              <Counter value={s.value} decimals={s.decimals} unit={s.unit} prefix={s.prefix} />
+              <span className="stat-label">{s.label}</span>
             </div>
           ))}
         </div>
       </section>
 
-      <div className="light-divider"></div>
-
-      {/* WATER STRIP */}
-      <div className="water-strip">
-        <div className="water-strip-box1"></div>
-        <div className="water-strip-box2"></div>
-        <div className="water-glow"></div>
-        <div className="water-content">
-          <div className="water-text">
-            <div className="water-label">
-              <div className="water-label-line"></div>
-              <span>Why It Matters</span>
-            </div>
-            <h3 className="water-headline">Municipal water isn't<br /><em>as clean as it looks.</em></h3>
-            <p className="water-body">South African tap water contains chlorine, sediment, trihalomethanes and trace heavy metals. Activated carbon and reverse osmosis together remove what standard treatment leaves behind.</p>
-          </div>
-          <div className="water-stats">
-            <div className="water-stat">
-              <div className="water-stat-ring">
-                <span className="water-stat-num">99%</span>
-              </div>
-              <span className="water-stat-unit">Contaminants<br />Removed by RO</span>
-            </div>
-            <div className="water-stat">
-              <div className="water-stat-ring">
-                <span className="water-stat-num">0.0001<span className="water-stat-num-small">mm</span></span>
-              </div>
-              <span className="water-stat-unit">RO Membrane<br />Pore Size</span>
+      {/* ================= WHY NEROFY ================= */}
+      <section className="section" id="about">
+        <div className="container why-grid">
+          <div className="why-visual reveal">
+            <div className="why-card">
+              <img src="/img/logo-silver.webp" alt="Nerofy Labs" width="240" height="162" loading="lazy" />
+              <p>
+                Process engineering
+                <br />
+                <strong>for your kitchen</strong>
+              </p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* WHY SECTION */}
-      <section className="why-section" id="why">
-        <div className="why-bg-box"></div>
-        <div className="why-bg-box2"></div>
-        <div className="why-grid">
-          <div className="orbit-wrap">
-            <div className="orbit-glow"></div>
-            <div className="orbit-ring orbit-ring-1"></div>
-            <div className="orbit-ring orbit-ring-2"></div>
-            <div className="orbit-dot-wrap"><div className="orbit-dot"></div></div>
-            <div className="orbit-ring orbit-ring-3"></div>
-            <div className="orbit-dot-wrap-2"><div className="orbit-dot-2"></div></div>
-            <div className="orbit-center">
-              <img src="/silver.png" alt="Nerofy Labs" />
-            </div>
-          </div>
-          <div className="why-content">
-            <div className="section-eyebrow" style={{ marginBottom: '22px' }}>
-              <div className="section-eyebrow-line"></div>
-              <span>Why Nerofy</span>
-            </div>
-            <h2 className="section-title" style={{ marginBottom: '32px' }}>Engineered,<br /><em>not guessed.</em></h2>
-            <p className="why-intro">
-              Nerofy Labs doesn't just sell filters — we <strong>assess, specify, supply and install</strong> the right system for your water, your home and your budget. Every installation is done personally.
+          <div>
+            <Eyebrow>Why Nerofy Labs</Eyebrow>
+            <Words as="h2" text="Engineered, not guessed." className="section-title" />
+            <p className="section-intro reveal" style={delay(0.15)}>
+              Nerofy Labs was started by a chemical engineer who spends his days designing water and process plants for
+              the mining industry. The same thinking goes into choosing what we sell: we pick filters on what they
+              actually remove, not on marketing claims.
             </p>
-            <div className="why-points">
+            <ul className="why-list">
               {[
-                { num: '01', title: 'Supply & Install', desc: 'Every system is professionally installed by us. No third-party plumbers, no loose ends.' },
-                { num: '02', title: 'Right-sized Solutions', desc: 'From a single tap filter to a whole-home system — we specify what your household actually needs.' },
-                { num: '03', title: 'Proven Technology', desc: 'Activated carbon and reverse osmosis — the gold standard in residential water purification.' },
-                { num: '04', title: 'Ongoing Support', desc: 'Filter replacements, maintenance and system checks — we stay involved after installation.' },
-              ].map((point) => (
-                <div className="why-point" key={point.num}>
-                  <span className="why-point-num">{point.num}</span>
+                ['Honest advice', 'Most homes only need a faucet filter. We will tell you when that is enough and when RO is worth it.'],
+                ['Proven media', 'Ceramic ultrafiltration, KDF, activated carbon and reverse osmosis. Nothing gimmicky.'],
+                ['Real support', 'A local email that a real person answers, plus help with cartridge replacements.'],
+              ].map(([t, d], i) => (
+                <li className="reveal" style={delay(0.2 + i * 0.1)} key={t}>
+                  <span className="why-tick" aria-hidden="true" />
                   <div>
-                    <p className="why-point-title">{point.title}</p>
-                    <p className="why-point-desc">{point.desc}</p>
+                    <h3>{t}</h3>
+                    <p>{d}</p>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
         </div>
       </section>
 
-      <div className="light-divider"></div>
-
-      {/* CTA */}
-      <section className="cta-section">
-        <div className="cta-box-tl"></div>
-        <div className="cta-box-br"></div>
-        <div className="cta-beam"></div>
-        <div className="cta-glow"></div>
-        <div className="cta-inner">
-          <div className="cta-eyebrow">
-            <div className="cta-eyebrow-line"></div>
-            <span>Get Started</span>
-            <div className="cta-eyebrow-line"></div>
+      {/* ================= FAQ ================= */}
+      <section className="section section-alt" id="faq">
+        <div className="container faq-grid">
+          <div>
+            <Eyebrow>Questions</Eyebrow>
+            <Words as="h2" text="Water filter FAQ." className="section-title" />
+            <p className="section-intro reveal">
+              Still unsure? <Link to="/contact">Send us a message</Link> and we will help you pick.
+            </p>
           </div>
-          <h2 className="cta-title">Ready for <em>clean water?</em></h2>
-          <p className="cta-sub">Book a free consultation and we'll recommend the right system for your home.</p>
-          <div className="cta-btn-wrap">
-            <a href="/contact" className="btn-primary">Book a Consultation</a>
+          <div className="faq-list">
+            {faqs.map((f, i) => (
+              <details className="faq reveal" style={delay(i * 0.06)} key={f.q}>
+                <summary>
+                  <h3>{f.q}</h3>
+                  <span className="faq-icon" aria-hidden="true" />
+                </summary>
+                <p>{f.a}</p>
+              </details>
+            ))}
           </div>
-          <p className="cta-email">Or reach us directly at <a href="mailto:info@nerofylabs.com">info@nerofylabs.com</a></p>
         </div>
       </section>
 
-      {/* FOOTER */}
-      <footer className="footer">
-        <div className="footer-logo">
-          <img src="/logo.png" alt="Nerofy Labs" />
-          <span>Nerofy Labs</span>
+      {/* ================= CTA ================= */}
+      <section className="cta dark">
+        <div className="cta-glow" aria-hidden="true" />
+        <div className="container cta-inner">
+          <Words as="h2" text="Better water starts at R299." className="cta-title" />
+          <p className="reveal" style={delay(0.2)}>
+            Order a faucet filter today, or get free advice on reverse osmosis and whole home systems.
+          </p>
+          <div className="hero-actions reveal" style={delay(0.3)}>
+            <Link to="/products" className="btn btn-primary btn-lg">
+              Shop now
+            </Link>
+            <Link to="/contact" className="btn btn-ghost btn-lg">
+              Talk to us
+            </Link>
+          </div>
         </div>
-        <span className="footer-copy">© 2026 Nerofy Labs. All rights reserved.</span>
-      </footer>
-    </>
+      </section>
+    </main>
   )
 }

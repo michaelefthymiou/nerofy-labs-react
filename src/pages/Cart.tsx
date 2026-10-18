@@ -1,43 +1,38 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import {
-  useCart,
-  SHIPPING_OPTIONS,
-  subtotal,
-  orderTotal,
-  formatRand,
-  type ShippingMethod,
-} from '../store/cart'
-/* Contact.css owns .page-header, .light-divider, .footer and the form
-   controls this page reuses. CSS is global once imported, but it has to
-   be imported by a module that's actually loaded — otherwise landing
-   directly on /cart would render unstyled. */
-import './Contact.css'
-import './Cart.css'
+import { useCart, SHIPPING_OPTIONS, subtotal, orderTotal, formatRand, type ShippingMethod } from '../store/cart'
+import { useStock } from '../store/stock'
+import Field from '../components/Field'
+import './Forms.css'
 
-type Customer = {
-  firstName: string
-  lastName: string
-  email: string
-  phone: string
-  address: string
+type Customer = { firstName: string; lastName: string; email: string; phone: string; address: string }
+type Errors = Partial<Record<keyof Customer | 'terms', string>>
+
+const EMPTY: Customer = { firstName: '', lastName: '', email: '', phone: '', address: '' }
+
+function normPhone(raw: string) {
+  let d = raw.replace(/\D/g, '')
+  if (d.startsWith('27') && d.length === 11) d = '0' + d.slice(2)
+  return /^0\d{9}$/.test(d) ? d : null
 }
 
-const EMPTY: Customer = {
-  firstName: '',
-  lastName: '',
-  email: '',
-  phone: '',
-  address: '',
+function validate(c: Customer, shipping: ShippingMethod, terms: boolean): Errors {
+  const e: Errors = {}
+  if (!c.firstName.trim()) e.firstName = 'Required'
+  if (!c.lastName.trim()) e.lastName = 'Required'
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(c.email.trim())) e.email = 'Enter a valid email so we can send your receipt'
+  if (!normPhone(c.phone)) e.phone = 'Enter a valid SA cell number, e.g. 082 123 4567'
+  if (c.address.trim().length < 5)
+    e.address = shipping === 'door' ? 'Enter your full delivery address' : 'Enter your suburb or preferred PUDO locker'
+  if (!terms) e.terms = 'Please accept the terms to continue'
+  return e
 }
 
-/** Posts the signed field set to PayFast as a real form submission. */
-function redirectToPayFast(processUrl: string, fields: Record<string, string>) {
+function redirectToPayFast(url: string, fields: Record<string, string>) {
   const form = document.createElement('form')
   form.method = 'POST'
-  form.action = processUrl
+  form.action = url
   form.style.display = 'none'
-
   for (const [name, value] of Object.entries(fields)) {
     if (value === undefined || value === null || value === '') continue
     const input = document.createElement('input')
@@ -46,86 +41,81 @@ function redirectToPayFast(processUrl: string, fields: Record<string, string>) {
     input.value = String(value)
     form.appendChild(input)
   }
-
   document.body.appendChild(form)
   form.submit()
 }
 
 export default function Cart() {
-  const items = useCart((s) => s.items)
-  const shipping = useCart((s) => s.shipping)
-  const setQty = useCart((s) => s.setQty)
-  const removeItem = useCart((s) => s.removeItem)
-  const setShipping = useCart((s) => s.setShipping)
-
+  const { items, shipping, setQty, removeItem, setShipping } = useCart()
+  const live = useStock((s) => s.live)
   const [customer, setCustomer] = useState<Customer>(EMPTY)
-  const [error, setError] = useState<string | null>(null)
+  const [terms, setTerms] = useState(false)
+  const [errors, setErrors] = useState<Errors>({})
+  const [serverError, setServerError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
 
-  const update =
-    (field: keyof Customer) =>
-    (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-      setCustomer((c) => ({ ...c, [field]: e.target.value }))
+  /* Keep quantities within live stock */
+  useEffect(() => {
+    for (const item of items) {
+      const stock = live[item.id]?.stock
+      if (stock !== undefined && stock > 0 && item.qty > stock) setQty(item.id, stock)
+    }
+  }, [items, live, setQty])
 
-  async function handleCheckout(e: React.FormEvent) {
+  const set = (k: keyof Customer) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    setCustomer((c) => ({ ...c, [k]: e.target.value }))
+    if (errors[k]) setErrors((x) => ({ ...x, [k]: undefined }))
+  }
+
+  const soldOut = items.filter((i) => (live[i.id]?.stock ?? 1) <= 0 || live[i.id]?.price === null)
+
+  async function checkout(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
+    setServerError(null)
+    const found = validate(customer, shipping, terms)
+    setErrors(found)
+    if (Object.keys(found).length) {
+      const first = Object.keys(found)[0]
+      document.getElementById(first === 'terms' ? 'terms' : `k-${first}`)?.focus()
+      return
+    }
+    if (soldOut.length) {
+      setServerError(`Please remove ${soldOut.map((i) => i.name).join(', ')}. It has sold out.`)
+      return
+    }
     setBusy(true)
-
     try {
       const res = await fetch('/.netlify/functions/payfast-checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: items.map((i) => ({ id: i.id, qty: i.qty })),
-          shipping,
-          customer,
-        }),
+        body: JSON.stringify({ items: items.map((i) => ({ id: i.id, qty: i.qty })), shipping, customer }),
       })
-
-      const data = await res.json()
-
+      const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        setError(data?.error ?? 'Something went wrong. Please try again.')
+        setServerError(data?.error ?? 'Something went wrong. Please try again.')
         setBusy(false)
         return
       }
-
       redirectToPayFast(data.process_url, data.fields)
     } catch {
-      setError(
-        'Could not reach the payment service. Check your connection and try again.',
-      )
+      setServerError('Could not reach the payment service. Check your connection and try again.')
       setBusy(false)
     }
   }
 
   if (items.length === 0) {
     return (
-      <>
-        <div className="page-header">
-          <div className="page-header-grid"></div>
-          <div className="page-header-beam"></div>
-          <div className="page-header-content">
-            <div className="page-header-eyebrow">
-              <div className="page-header-eyebrow-line"></div>
-              <span>Your Cart</span>
-            </div>
-            <h1 className="page-header-title">
-              Nothing here <em>yet</em>
-            </h1>
+      <main>
+        <section className="page-hero page-hero-sm dark">
+          <div className="container">
+            <h1 className="page-title">Your cart is empty.</h1>
+            <p className="page-lead">Our faucet filter is a good place to start.</p>
+            <Link to="/products" className="btn btn-primary btn-lg">
+              Shop water filters
+            </Link>
           </div>
-        </div>
-
-        <div className="light-divider"></div>
-
-        <section className="cart-section cart-empty">
-          <p>Your cart is empty.</p>
-          <Link to="/products" className="form-submit">
-            Browse Systems <span className="form-submit-arrow">↗</span>
-          </Link>
         </section>
-      </>
+      </main>
     )
   }
 
@@ -133,232 +123,161 @@ export default function Cart() {
   const total = orderTotal(items, shipping)
 
   return (
-    <>
-      <div className="page-header">
-        <div className="page-header-grid"></div>
-        <div className="page-header-beam"></div>
-        <div className="page-header-content">
-          <div className="page-header-eyebrow">
-            <div className="page-header-eyebrow-line"></div>
-            <span>Your Cart</span>
-          </div>
-          <h1 className="page-header-title">
-            Review your <em>order</em>
-          </h1>
+    <main>
+      <section className="page-hero page-hero-sm dark">
+        <div className="container">
+          <h1 className="page-title">Checkout</h1>
+          <ol className="checkout-steps">
+            <li className="is-on">Cart and details</li>
+            <li>Pay securely with PayFast</li>
+            <li>Delivery</li>
+          </ol>
         </div>
-      </div>
+      </section>
 
-      <div className="light-divider"></div>
+      <section className="section section-tight">
+        <form className="container checkout-grid" onSubmit={checkout} noValidate>
+          <div className="checkout-main">
+            <div className="card">
+              <h2 className="card-title">Your order</h2>
+              <ul className="cart-items">
+                {items.map((item) => {
+                  const stock = live[item.id]?.stock ?? 20
+                  const out = stock <= 0
+                  return (
+                    <li className={`cart-item${out ? ' is-out' : ''}`} key={item.id}>
+                      <img src={item.image} alt="" width="88" height="88" />
+                      <div className="cart-item-info">
+                        <h3>{item.name}</h3>
+                        <p>{out ? 'Sold out, please remove' : `${formatRand(item.price)} each`}</p>
+                        <button type="button" className="text-btn" onClick={() => removeItem(item.id)}>
+                          Remove
+                        </button>
+                      </div>
+                      <div className="qty qty-sm">
+                        <button type="button" aria-label={`Fewer ${item.name}`} onClick={() => setQty(item.id, item.qty - 1)}>
+                          −
+                        </button>
+                        <span aria-live="polite">{item.qty}</span>
+                        <button
+                          type="button"
+                          aria-label={`More ${item.name}`}
+                          disabled={item.qty >= Math.min(20, stock)}
+                          onClick={() => setQty(item.id, item.qty + 1)}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <strong className="cart-item-total">{formatRand(item.price * item.qty)}</strong>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
 
-      <section className="cart-section">
-        <div className="cart-grid">
-          {/* ---------------- items + details ---------------- */}
-          <div className="cart-main">
-            <ul className="cart-items">
-              {items.map((item) => (
-                <li className="cart-item" key={item.id}>
-                  <img src={item.image} alt={item.name} />
-
-                  <div className="cart-item-info">
-                    <h2>{item.name}</h2>
-                    <p className="cart-item-price">
-                      {formatRand(item.price)} each
-                    </p>
-                    <button
-                      type="button"
-                      className="cart-remove"
-                      onClick={() => removeItem(item.id)}
-                    >
-                      Remove
-                    </button>
-                  </div>
-
-                  <div className="cart-qty">
-                    <button
-                      type="button"
-                      aria-label={`Decrease quantity of ${item.name}`}
-                      onClick={() => setQty(item.id, item.qty - 1)}
-                    >
-                      −
-                    </button>
-                    <span aria-live="polite">{item.qty}</span>
-                    <button
-                      type="button"
-                      aria-label={`Increase quantity of ${item.name}`}
-                      onClick={() => setQty(item.id, Math.min(item.qty + 1, 20))}
-                    >
-                      +
-                    </button>
-                  </div>
-
-                  <div className="cart-item-total">
-                    {formatRand(item.price * item.qty)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-
-            <form className="cart-form" onSubmit={handleCheckout}>
-              <h2 className="cart-block-title">Delivery</h2>
-
-              <div className="cart-shipping">
-                {(Object.keys(SHIPPING_OPTIONS) as ShippingMethod[]).map(
-                  (key) => (
-                    <label
-                      key={key}
-                      className={`cart-ship-option${
-                        shipping === key ? ' is-selected' : ''
-                      }`}
-                    >
-                      <input
-                        type="radio"
-                        name="shipping"
-                        value={key}
-                        checked={shipping === key}
-                        onChange={() => setShipping(key)}
-                      />
-                      <span className="cart-ship-label">
-                        {SHIPPING_OPTIONS[key].label}
-                      </span>
-                      <span className="cart-ship-blurb">
-                        {SHIPPING_OPTIONS[key].blurb}
-                      </span>
-                      <span className="cart-ship-price">
-                        {formatRand(SHIPPING_OPTIONS[key].price)}
-                      </span>
-                    </label>
-                  ),
-                )}
-              </div>
-
-              <h2 className="cart-block-title">Your details</h2>
-
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="firstName">
-                    First Name
+            <div className="card">
+              <h2 className="card-title">Delivery</h2>
+              <div className="ship-options" role="radiogroup" aria-label="Delivery method">
+                {(Object.keys(SHIPPING_OPTIONS) as ShippingMethod[]).map((key) => (
+                  <label key={key} className={`ship-option${shipping === key ? ' is-on' : ''}`}>
+                    <input type="radio" name="shipping" checked={shipping === key} onChange={() => setShipping(key)} />
+                    <span className="ship-radio" aria-hidden="true" />
+                    <span className="ship-text">
+                      <strong>{SHIPPING_OPTIONS[key].label}</strong>
+                      <span>{SHIPPING_OPTIONS[key].blurb}</span>
+                    </span>
+                    <strong className="ship-price">{formatRand(SHIPPING_OPTIONS[key].price)}</strong>
                   </label>
-                  <input
-                    id="firstName"
-                    className="form-input"
-                    value={customer.firstName}
-                    onChange={update('firstName')}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="lastName">
-                    Last Name
-                  </label>
-                  <input
-                    id="lastName"
-                    className="form-input"
-                    value={customer.lastName}
-                    onChange={update('lastName')}
-                    required
-                  />
-                </div>
+                ))}
               </div>
+              <Field
+                id="k-address"
+                label={shipping === 'door' ? 'Delivery address' : 'Your suburb or preferred PUDO locker'}
+                error={errors.address}
+                hint={
+                  shipping === 'door'
+                    ? 'Street address, suburb, city and postal code'
+                    : 'e.g. "PUDO locker at Engen Bedfordview" or just "Edenvale". We will confirm the locker with you.'
+                }
+              >
+                <textarea id="k-address" rows={3} value={customer.address} onChange={set('address')} autoComplete="street-address" />
+              </Field>
+            </div>
 
-              <div className="form-row">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="email">
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    className="form-input"
-                    value={customer.email}
-                    onChange={update('email')}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="phone">
-                    Phone
-                  </label>
-                  <input
-                    id="phone"
-                    type="tel"
-                    className="form-input"
-                    value={customer.phone}
-                    onChange={update('phone')}
-                  />
-                </div>
+            <div className="card">
+              <h2 className="card-title">Your details</h2>
+              <div className="field-row">
+                <Field id="k-firstName" label="First name" error={errors.firstName}>
+                  <input id="k-firstName" value={customer.firstName} onChange={set('firstName')} autoComplete="given-name" />
+                </Field>
+                <Field id="k-lastName" label="Last name" error={errors.lastName}>
+                  <input id="k-lastName" value={customer.lastName} onChange={set('lastName')} autoComplete="family-name" />
+                </Field>
               </div>
-
-              <div className="form-group">
-                <label className="form-label" htmlFor="address">
-                  {shipping === 'door'
-                    ? 'Delivery Address'
-                    : 'Preferred PUDO Locker / Area'}
-                </label>
-                <textarea
-                  id="address"
-                  className="form-input form-textarea"
-                  value={customer.address}
-                  onChange={update('address')}
-                  required={shipping === 'door'}
-                  placeholder={
-                    shipping === 'door'
-                      ? 'Street, suburb, city, postal code'
-                      : 'e.g. PUDO locker at Engen Rivonia, or just your suburb'
-                  }
-                />
+              <div className="field-row">
+                <Field id="k-email" label="Email" error={errors.email}>
+                  <input id="k-email" type="email" value={customer.email} onChange={set('email')} autoComplete="email" />
+                </Field>
+                <Field id="k-phone" label="Cell number" error={errors.phone} hint="For delivery updates">
+                  <input id="k-phone" type="tel" value={customer.phone} onChange={set('phone')} autoComplete="tel" placeholder="082 123 4567" />
+                </Field>
               </div>
-
-              {error && (
-                <p className="cart-error" role="alert">
-                  {error}
-                </p>
-              )}
-
-              <button type="submit" className="form-submit" disabled={busy}>
-                {busy ? 'Preparing…' : `Pay ${formatRand(total)}`}
-                <span className="form-submit-arrow">↗</span>
-              </button>
-
-              <p className="cart-secure">
-                You'll be redirected to PayFast to complete payment securely.
-                We never see your card details.
-              </p>
-            </form>
+            </div>
           </div>
 
-          {/* ---------------- summary ---------------- */}
-          <aside className="cart-summary">
-            <h2 className="cart-block-title">Summary</h2>
-
-            <div className="cart-line">
+          <aside className="checkout-summary card">
+            <h2 className="card-title">Summary</h2>
+            <div className="sum-line">
               <span>Subtotal</span>
               <span>{formatRand(goods)}</span>
             </div>
-            <div className="cart-line">
+            <div className="sum-line">
               <span>{SHIPPING_OPTIONS[shipping].label}</span>
               <span>{formatRand(SHIPPING_OPTIONS[shipping].price)}</span>
             </div>
-            <div className="cart-line cart-line-total">
+            <div className="sum-line sum-total">
               <span>Total</span>
               <span>{formatRand(total)}</span>
             </div>
 
-            <Link to="/products" className="cart-continue">
+            <label className={`check${errors.terms ? ' has-error' : ''}`}>
+              <input
+                id="terms"
+                type="checkbox"
+                checked={terms}
+                onChange={(e) => {
+                  setTerms(e.target.checked)
+                  if (errors.terms) setErrors((x) => ({ ...x, terms: undefined }))
+                }}
+              />
+              <span>
+                I accept the <Link to="/terms" target="_blank">terms of sale</Link> and{' '}
+                <Link to="/returns" target="_blank">returns policy</Link>.
+              </span>
+            </label>
+            {errors.terms && <p className="field-error">{errors.terms}</p>}
+
+            {(serverError || Object.keys(errors).some((k) => errors[k as keyof Errors])) && (
+              <p className="form-alert" role="alert">
+                {serverError ?? 'Please fix the highlighted fields.'}
+              </p>
+            )}
+
+            <button type="submit" className="btn btn-primary btn-lg btn-full" disabled={busy}>
+              {busy ? 'Connecting to PayFast…' : `Pay ${formatRand(total)} securely`}
+            </button>
+            <p className="secure-note">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v10H5z" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+              </svg>
+              Card, instant EFT and more through PayFast. We never see your card details.
+            </p>
+            <Link to="/products" className="text-btn">
               ← Continue shopping
             </Link>
           </aside>
-        </div>
+        </form>
       </section>
-
-      <footer className="footer">
-        <div className="footer-logo">
-          <img src="/logo.png" alt="Nerofy Labs" />
-          <span>Nerofy Labs</span>
-        </div>
-        <span className="footer-copy">
-          © 2026 Nerofy Labs. All rights reserved.
-        </span>
-      </footer>
-    </>
+    </main>
   )
 }

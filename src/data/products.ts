@@ -1,53 +1,83 @@
 export type Product = {
   id: string
-  num: string
+  slug: string
   category: string
   name: string
-  /** Single-line name used in the cart and on PayFast's payment page. */
-  shortName: string
+  tagline: string
   desc: string
+  bullets: string[]
   specs: string[]
-  images: string[]
-  labels: string[]
-  /** Price in rands. null means enquiry-only (no cart button). */
+  images: { src: string; alt: string; label: string }[]
+  /** Fallback price in rands; the Google Sheet overrides it. null = enquiry only */
   price: number | null
+  /** Fallback stock; the Google Sheet overrides it. */
+  stock: number
 }
 
 export const products: Product[] = [
   {
     id: 'tap-filter',
-    num: '01',
-    category: 'Tap Filtration',
-    name: 'Countertop\nFaucet Filter',
-    shortName: 'Countertop Faucet Filter',
-    desc: 'Ultrafiltration countertop faucet filter with an eco-friendly ceramic 0.5-micron filtration cartridge. Attaches directly to your existing tap with no plumbing required — delivering clean, filtered drinking water on demand.',
-    specs: ['0.5 Micron Ceramic', 'Ultrafiltration', 'Countertop', 'Eco-Friendly Cartridge', 'No Plumbing Needed'],
-    images: ['/tap1.png', '/tap2.png'],
-    labels: ['Front View', 'Detail'],
+    slug: 'faucet-filter',
+    category: 'Tap filtration',
+    name: 'Countertop Faucet Filter',
+    tagline: 'Clean drinking water straight from your kitchen tap.',
+    desc: 'An ultrafiltration faucet filter with a 0.5 micron ceramic cartridge. It clips onto your existing kitchen tap in minutes, no plumber and no tools needed, and gives you clean, great tasting drinking water on demand.',
+    bullets: [
+      '0.5 micron ceramic ultrafiltration cartridge',
+      'Reduces chlorine taste, sediment and rust particles',
+      'Fits standard kitchen taps, no plumbing required',
+      'Switch between filtered and normal flow',
+    ],
+    specs: ['0.5 micron ceramic', 'Ultrafiltration', 'No plumbing', 'Eco cartridge'],
+    images: [
+      { src: '/img/tap1.webp', alt: 'Countertop faucet water filter fitted to a kitchen tap', label: 'Fitted' },
+      { src: '/img/tap2.webp', alt: 'Ceramic faucet filter cartridge close up', label: 'Cartridge' },
+    ],
     price: 299,
+    stock: 50,
   },
   {
     id: 'shower-filter',
-    num: '02',
-    category: 'Shower Filtration',
-    name: '15-Stage\nShower Filter',
-    shortName: '15-Stage Shower Filter',
-    desc: 'A 15-stage shower head filter that combines antibacterial balls, calcium sulfite balls and KDF media to soften your water, reduce chlorine and heavy metals, and noticeably improve skin moisture and hair health from the very first use.',
-    specs: ['15-Stage Filtration', 'KDF Media', 'Antibacterial Balls', 'Calcium Sulfite', 'Softens Water', 'Reduces Hair Loss', 'Reduces Acne'],
-    images: ['/shower.png', '/shower2.png'],
-    labels: ['Full Unit', 'Detail'],
+    slug: 'shower-filter',
+    category: 'Shower filtration',
+    name: '15-Stage Shower Filter',
+    tagline: 'Softer feeling water for your skin and hair.',
+    desc: 'A 15 stage inline shower filter combining KDF media, calcium sulfite and antibacterial ceramic balls. It reduces chlorine and heavy metals in your shower water, which can leave skin and hair feeling dry.',
+    bullets: [
+      '15 filtration stages including KDF and calcium sulfite',
+      'Reduces chlorine and heavy metals in shower water',
+      'Can help with dry skin and dry hair',
+      'Screws in between your shower arm and shower head',
+    ],
+    specs: ['15 stages', 'KDF media', 'Calcium sulfite', 'Fits standard arms'],
+    images: [
+      { src: '/img/shower.webp', alt: '15 stage shower filter showing its filtration layers', label: 'Stages' },
+      { src: '/img/shower2.webp', alt: 'Shower filter installation diagram', label: 'Installation' },
+    ],
     price: 299,
+    stock: 0,
   },
   {
     id: 'undersink-ro',
-    num: '03',
-    category: 'Reverse Osmosis',
-    name: '5-Stage Undersink\nRO System',
-    shortName: '5-Stage Undersink RO System',
-    desc: 'A 5-stage undersink reverse osmosis and ultrafiltration water purification system. The PP + UDF + CTO + UF + T33 filter cartridge sequence removes sediment, chlorine, dissolved solids, bacteria and improves taste — delivering up to 99% contaminant-free water direct from your kitchen tap.',
-    specs: ['5-Stage RO + UF', 'PP Sediment', 'UDF Carbon', 'CTO Block', 'Ultrafiltration', 'T33 Post Carbon', '99% Removal'],
-    images: ['/ro1.png', '/ro2.png'],
-    labels: ['Full System', 'Detail'],
+    slug: 'undersink-ro',
+    category: 'Reverse osmosis',
+    name: '5-Stage Undersink RO System',
+    tagline: 'The highest purity drinking water, installed under your sink.',
+    desc: 'A 5 stage undersink reverse osmosis and ultrafiltration system. The PP, UDF, CTO, UF and T33 cartridge sequence removes sediment, chlorine, dissolved solids and bacteria, giving you up to 99% pure water from a dedicated tap. Supplied and installed by us.',
+    bullets: [
+      'PP sediment, UDF carbon, CTO block, UF and T33 post carbon',
+      'Removes up to 99% of dissolved solids',
+      'Dedicated drinking water tap',
+      'Professionally installed and commissioned',
+    ],
+    specs: ['5 stages', 'Reverse osmosis', 'Up to 99% TDS removal', 'Installed'],
+    images: [
+      { src: '/img/ro1.webp', alt: '5 stage undersink reverse osmosis water purification system', label: 'System' },
+      { src: '/img/ro2.webp', alt: 'Reverse osmosis filter cartridges detail', label: 'Cartridges' },
+    ],
     price: null,
+    stock: 0,
   },
 ]
+
+export const productById = (id: string) => products.find((p) => p.id === id)

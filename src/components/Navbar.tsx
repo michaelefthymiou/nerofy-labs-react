@@ -1,118 +1,99 @@
-import { useState, useEffect } from 'react'
-import { Link, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import { useCart, countItems } from '../store/cart'
-import './Navbar.css'
 
-/* Links shown inside the mobile drawer, in order. */
-const MOBILE_LINKS = [
-  { to: '/products', label: 'Products' },
+const LINKS = [
+  { to: '/', label: 'Home' },
   { to: '/products', label: 'Shop' },
-  { to: '/#why', label: 'About' },
-  { to: '/cart', label: 'Cart' },
+  { to: '/#how-it-works', label: 'How it works' },
+  { to: '/#faq', label: 'FAQ' },
 ]
 
 export default function Navbar() {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
+  const [hidden, setHidden] = useState(false)
   const location = useLocation()
-  const cartCount = useCart((s) => countItems(s.items))
+  const count = useCart((s) => countItems(s.items))
 
-  // Close the drawer whenever the route changes
-  useEffect(() => {
-    setMenuOpen(false)
-  }, [location.pathname, location.hash])
+  useEffect(() => setOpen(false), [location.pathname, location.hash])
 
-  // Close on Escape
   useEffect(() => {
-    if (!menuOpen) return
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false)
+    let lastY = window.scrollY
+    const onScroll = () => {
+      const y = window.scrollY
+      setScrolled(y > 12)
+      setHidden(y > 320 && y > lastY + 4)
+      if (y < lastY - 4 || y < 320) setHidden(false)
+      lastY = y
     }
-    window.addEventListener('keydown', onKeyDown)
-    return () => window.removeEventListener('keydown', onKeyDown)
-  }, [menuOpen])
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
-  // Stop the page scrolling behind the open drawer
   useEffect(() => {
-    document.body.style.overflow = menuOpen ? 'hidden' : ''
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [menuOpen])
+    document.body.style.overflow = open ? 'hidden' : ''
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false)
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open])
 
   return (
-    <nav className="nav">
-      <Link to="/" className="nav-logo">
-        <img src="/logo.png" alt="Nerofy Labs" />
-        <span className="nav-logo-text">Nerofy Labs</span>
-      </Link>
+    <header className={`nav${scrolled ? ' is-scrolled' : ''}${hidden && !open ? ' is-hidden' : ''}${open ? ' is-open' : ''}`}>
+      <div className="nav-inner">
+        <Link to="/" className="nav-brand" aria-label="Nerofy Labs home">
+          <img src="/img/logo-ink.png" alt="" width="86" height="46" />
+          <span>Nerofy Labs</span>
+        </Link>
 
-      <div className="nav-right">
-        <div className="nav-links">
-          <Link to="/products">Products</Link>
-          <Link to="/#why">About</Link>
-          <Link to="/contact" className="nav-cta">Get in Touch</Link>
-        </div>
+        <nav className="nav-links" aria-label="Main">
+          {LINKS.map((l) => (
+            <NavLink key={l.label} to={l.to} end={l.to === '/'} className="nav-link">
+              {l.label}
+            </NavLink>
+          ))}
+        </nav>
 
         <div className="nav-actions">
-          <Link
-            to="/cart"
-            className="nav-cart"
-            aria-label={
-              cartCount === 1 ? 'Cart, 1 item' : `Cart, ${cartCount} items`
-            }
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-              <path
-                d="M4 5h2l2.2 9.5a1.5 1.5 0 0 0 1.46 1.15h7.3a1.5 1.5 0 0 0 1.46-1.13L20 8H7"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <circle cx="10" cy="19" r="1.4" fill="currentColor" />
-              <circle cx="17.5" cy="19" r="1.4" fill="currentColor" />
-            </svg>
-            {cartCount > 0 && (
-              <span className="nav-cart-badge">{cartCount}</span>
-            )}
+          <Link to="/contact" className="btn btn-dark btn-sm nav-cta">
+            Get in touch
           </Link>
-
+          <Link to="/cart" className="nav-cart" aria-label={`Cart, ${count} ${count === 1 ? 'item' : 'items'}`}>
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3.5 4.5h2.2l2.3 10.1a1.6 1.6 0 0 0 1.6 1.2h7.6a1.6 1.6 0 0 0 1.5-1.2L20.5 8H6.8" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              <circle cx="10" cy="19.5" r="1.5" fill="currentColor" />
+              <circle cx="17.5" cy="19.5" r="1.5" fill="currentColor" />
+            </svg>
+            {count > 0 && <span className="nav-cart-badge">{count}</span>}
+          </Link>
           <button
             type="button"
-            className={`nav-burger${menuOpen ? ' is-open' : ''}`}
-            aria-label={menuOpen ? 'Close menu' : 'Open menu'}
-            aria-expanded={menuOpen}
+            className="nav-burger"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            aria-expanded={open}
             aria-controls="nav-drawer"
-            onClick={() => setMenuOpen((open) => !open)}
+            onClick={() => setOpen((o) => !o)}
           >
-            <span />
             <span />
             <span />
           </button>
         </div>
       </div>
 
-      <div
-        className={`nav-backdrop${menuOpen ? ' is-open' : ''}`}
-        onClick={() => setMenuOpen(false)}
-        aria-hidden="true"
-      />
-
-      <div
-        id="nav-drawer"
-        className={`nav-drawer${menuOpen ? ' is-open' : ''}`}
-        hidden={!menuOpen}
-      >
-        {MOBILE_LINKS.map((link) => (
-          <Link key={link.label} to={link.to} className="nav-drawer-link">
-            {link.label}
-          </Link>
-        ))}
-        <Link to="/contact" className="nav-drawer-cta">
-          Get in Touch
-        </Link>
+      <div id="nav-drawer" className="nav-drawer" aria-hidden={!open}>
+        <nav aria-label="Mobile">
+          {[...LINKS, { to: '/contact', label: 'Contact' }, { to: '/cart', label: `Cart${count ? ` (${count})` : ''}` }].map((l, i) => (
+            <Link key={l.label} to={l.to} className="nav-drawer-link" style={{ ['--i' as string]: i }} tabIndex={open ? 0 : -1}>
+              {l.label}
+            </Link>
+          ))}
+        </nav>
+        <p className="nav-drawer-foot">
+          <a href="mailto:info@nerofylabs.com">info@nerofylabs.com</a>
+        </p>
       </div>
-    </nav>
+    </header>
   )
 }

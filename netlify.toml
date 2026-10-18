@@ -3,9 +3,22 @@
   publish = "dist"
   functions = "netlify/functions"
 
-# Single-page app: every non-file route must serve index.html so that
-# /products, /cart and /checkout/success work on refresh and direct links.
-# Functions are matched before this rule, so /.netlify/functions/* is safe.
+[functions]
+  node_bundler = "esbuild"
+
+# Long cache for hashed build assets and images.
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/img/*"
+  [headers.values]
+    Cache-Control = "public, max-age=2592000"
+
+# Every page is prerendered to its own HTML file at build time.
+# Anything else falls back to the app shell, which shows the 404 page.
 [[redirects]]
   from = "/*"
   to = "/index.html"
